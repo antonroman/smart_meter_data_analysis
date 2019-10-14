@@ -109,20 +109,26 @@ if __name__ == "__main__":
     sample_df['Fh'] = pd.to_datetime(sample_df['Fh'])
     sample_df= sample_df.sort_values(by=['Fh'])
 
-    # Data normalization
-
-    sample_df['AI'] = normalize_numeric_column('AI')
-    sample_df['R1'] = normalize_numeric_column('R1')
-    sample_df['R4'] = normalize_numeric_column('R4')
-
-    # Data standardization
-    # we need to check first if the data follows a Gaussian distribution
+    # Beforen standardization we need to check first if the data follows a Gaussian distribution
     # https://machinelearningmastery.com/a-gentle-introduction-to-normality-tests-in-python/
     # Two options:
     #   - graphical test
     #   - statistical test
 
-    sample_df.plot.hist(column="AI")
+    counts, bins = np.histogram(sample_df['AI'])
+    # counts, bins = np.histogram(sample_df['R1'])
+    # counts, bins = np.histogram(sample_df['R2'])
+    print(bins)
+    plt.hist(bins[:-1], bins, weights=counts)
+    plt.show()
+
+    # data does not follows a Gaussian distribution but Exponential or Pareto
+
+    # Data normalization
+
+    sample_df['AI'] = normalize_numeric_column('AI')
+    sample_df['R1'] = normalize_numeric_column('R1')
+    sample_df['R4'] = normalize_numeric_column('R4')
 
 
     # We are going to predict first power consumption
