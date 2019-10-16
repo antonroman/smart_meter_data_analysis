@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 # general imports
-import sys, getopt
+import sys, getopt, re
 from datetime import datetime
 
 
@@ -20,8 +20,10 @@ from keras.layers import Dropout
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
+import seaborn as sns 
 
- 
+
+# ./lstm_meter_data_consumption_predictor.py -f ../data/datoscontadores_csv/meter_data_ZIV0035301588.csv -n 200
 
 def plot_3d_array(features_set):
     N=8
@@ -84,6 +86,9 @@ if __name__ == "__main__":
 
     sample_df= pd.read_csv(sample_file_path)
 
+    meter_id = re.compile('.*meter_data_(.*)\.csv').match(sample_file_path).group(1)
+    print('Processing data for meter ID: ' + meter_id)
+
     # print(sample_file['Fh'])
     print(sample_df.head())
 
@@ -115,14 +120,43 @@ if __name__ == "__main__":
     #   - graphical test
     #   - statistical test
 
-    counts, bins = np.histogram(sample_df['AI'])
-    # counts, bins = np.histogram(sample_df['R1'])
-    # counts, bins = np.histogram(sample_df['R2'])
-    print(bins)
-    plt.hist(bins[:-1], bins, weights=counts)
-    plt.show()
+    # check data types
+    print(sample_df.dtypes)
+
+    # counts, bins = np.histogram(sample_df['AI'])
+    # # counts, bins = np.histogram(sample_df['R1'])
+    # # counts, bins = np.histogram(sample_df['R2'])
+    # print(bins)
+    # plt.hist(bins[:-1], bins, weights=counts)
+    # plt.show()
 
     # data does not follows a Gaussian distribution but Exponential or Pareto
+    # ANTON: check the histogram for the same time for every day, I think this should be a Gaussian distribution
+
+    # set date as index
+    sample_df = sample_df.set_index('Fh')
+    # sns.set(rc={'figure.figsize':(11, 4)})
+    # sample_df['AI'].plot(linewidth=0.3)
+    # sample_df['R1'].plot(linewidth=0.4)
+    # sample_df['R4'].plot(linewidth=0.4)
+    # sample_df['AI'].set_ylabel('Hourly Consumption (Wh)')
+    # sample_df['R1'].set_ylabel('Hourly reactive power quadrant I (VArh)')
+    # sample_df['R4'].set_ylabel('Hourly reactive power quadrant IV (VArh)')
+
+
+    cols_plot = ['AI', 'R1', 'R4']
+    #axes = sample_df[cols_plot].plot(marker='.', alpha=0.5, linestyle='None', figsize=(11, 9), subplots=True)
+    axes = sample_df[cols_plot].plot(linewidth=0.3,alpha=0.5,figsize=(11, 9), subplots=True, title="Meter ID: "+meter_id)
+    axes[0].set_ylabel('Hourly consumption (Wh)')
+    axes[1].set_ylabel('Hourly reactive power QI (VArh)')
+    axes[2].set_ylabel('Hourly reactive power QIV (VArh)')
+
+
+    # for ax in axes:
+    #     ax.set_ylabel('Hourly Totals (Wh)')
+    #plt.show()
+    plt.savefig(meter_id+'.png')
+
 
     # Data normalization
 
@@ -133,7 +167,6 @@ if __name__ == "__main__":
 
     # We are going to predict first power consumption
     # we are going to get 
-
 
  # We receive a single file of data so we should split it into training and sample file, 
     # to check teh performance of the model.
