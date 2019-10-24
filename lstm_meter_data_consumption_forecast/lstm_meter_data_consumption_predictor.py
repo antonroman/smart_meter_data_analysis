@@ -7,6 +7,7 @@ from datetime import datetime
 
 # data processing imports
 import pandas as pd
+from pandas.api.types import CategoricalDtype
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 
@@ -21,9 +22,11 @@ import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import seaborn as sns 
+sns.set(style="darkgrid")
 
 
-# ./lstm_meter_data_consumption_predictor.py -f ../data/datoscontadores_csv/meter_data_ZIV0035301588.csv -n 200
+
+# ./lstm_meter_data_consumption_predictor.py -f ../data/datoscontadores_csv/meter_data_ZIV0035301588.csv -n 200 -e ../data/datoscontadores_csv/error_files/meter_data_ZIV0035301588_error.csv
 
 def plot_3d_array(features_set):
     N=8
@@ -65,7 +68,7 @@ def main(argv):
     training_samples_file = ''
     testing_samples_file = ''
     try:
-        opts, args = getopt.getopt(argv,"hf:n:",["sample-file=","number-training-samples="])
+        opts, args = getopt.getopt(argv,"hf:n:e:",["sample-file=","number-training-samples="])
     except getopt.GetoptError:
         print('lstm_meter_data_consumption_predictor.py -f <sample file> -n <numebr-training samples>')
         sys.exit(2)
@@ -77,14 +80,18 @@ def main(argv):
             training_samples_file = arg
         elif opt in ("-n", "--number-training-samples"):
             testing_samples_file = arg
+        elif opt in ("-e", "--error-file"):
+            error_file = arg
 
-    return training_samples_file, testing_samples_file  
+
+    return training_samples_file, testing_samples_file, error_file  
 
 if __name__ == "__main__":
 
-    sample_file_path, number_training_samples = main(sys.argv[1:])
+    sample_file_path, number_training_samples, error_file = main(sys.argv[1:])
 
     sample_df= pd.read_csv(sample_file_path)
+    error_df = pd.read_csv(error_file)
 
     meter_id = re.compile('.*meter_data_(.*)\.csv').match(sample_file_path).group(1)
     print('Processing data for meter ID: ' + meter_id)
@@ -114,6 +121,10 @@ if __name__ == "__main__":
     sample_df['Fh'] = pd.to_datetime(sample_df['Fh'])
     sample_df= sample_df.sort_values(by=['Fh'])
 
+    error_df['t'] = pd.to_datetime(error_df['t'])
+    error_df= error_df.sort_values(by=['t'])
+
+
     # Beforen standardization we need to check first if the data follows a Gaussian distribution
     # https://machinelearningmastery.com/a-gentle-introduction-to-normality-tests-in-python/
     # Two options:
@@ -122,6 +133,8 @@ if __name__ == "__main__":
 
     # check data types
     print(sample_df.dtypes)
+
+    print(error_df.dtypes)
 
     # counts, bins = np.histogram(sample_df['AI'])
     # # counts, bins = np.histogram(sample_df['R1'])
@@ -135,6 +148,33 @@ if __name__ == "__main__":
 
     # set date as index
     sample_df = sample_df.set_index('Fh')
+    #sample_df.timedelta_range(0, periods=9, freq="W")
+
+
+    # error_df = error_df.set_index('t')
+    # ErrCode_type = CategoricalDtype(categories=[1,2], ordered=False)
+    # ErrCat_type = CategoricalDtype(categories=[1,2], ordered=False)
+    # type_type = CategoricalDtype(categories=['S02','S05'], ordered=False)
+    # error_df['ErrCode'] = error_df['ErrCode'].astype(ErrCode_type)
+    # error_df['ErrCat'] = error_df['ErrCat'].astype(ErrCat_type)
+    # error_df['type'] = error_df['type'].astype(type_type)
+
+    # #error_data_plot = sns.load_dataset(error_df)
+    # #sns.catplot(x=error_df.type,y=error_df.ErrCode)
+    # #sns.relplot(x=error_df.t,y=error_df.ErrCode,data=error_df)
+    # sns.countplot(error_df['type']).set_title("Experinment")
+
+    # ErrCat is alwasy fixed to 2 so we are not going to consider it as variable
+    # time serie showing 'ErrCode' and the 'type' will be represented with color
+    #  https://seaborn.pydata.org/tutorial/relational.html#relational-tutorial
+    #  https://seaborn.pydata.org/tutorial/categorical.html
+
+    # Error Histogram
+    # 
+
+    print(error_df.dtypes)
+
+
     # sns.set(rc={'figure.figsize':(11, 4)})
     # sample_df['AI'].plot(linewidth=0.3)
     # sample_df['R1'].plot(linewidth=0.4)
@@ -151,11 +191,14 @@ if __name__ == "__main__":
     axes[1].set_ylabel('Hourly reactive power QI (VArh)')
     axes[2].set_ylabel('Hourly reactive power QIV (VArh)')
 
+    #cols_plot_error = ['ErrCode', 'type']
+    #axes_error = error_df[cols_plot_error].plot(marker='.', alpha=0.5, linestyle='None', figsize=(11, 9), title="Errors meter ID: "+meter_id)
+
 
     # for ax in axes:
     #     ax.set_ylabel('Hourly Totals (Wh)')
-    #plt.show()
-    plt.savefig(meter_id+'.png')
+    plt.show()
+    #plt.savefig(meter_id+'.png')
 
 
     # Data normalization
