@@ -3,8 +3,6 @@
 # general imports
 import sys, getopt, re
 from datetime import datetime
-import matplotlib.dates as mdates
-
 
 
 # data processing imports
@@ -12,12 +10,12 @@ import pandas as pd
 from pandas.api.types import CategoricalDtype
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+from statsmodels.tsa.arima_model import ARIMA
+
 
 import numpy as np
-from keras.models import Sequential  
-from keras.layers import Dense  
-from keras.layers import LSTM  
-from keras.layers import Dropout 
+
 
 # imports for ploting
 import matplotlib as mpl
@@ -28,14 +26,33 @@ sns.set(style="darkgrid")
 
 
 
-# ./lstm_meter_data_consumption_forecast/lstm_meter_data_consumption_plotter.py -s data/datoscontadores_csv/S02/meter_data_ZIV0035301588.csv -d data/datoscontadores_csv/S05/meter_data_ZIV0035301588_S05.csv -e data/datoscontadores_csv/Errors/meter_data_ZIV0035301588_error.csv -o data/datoscontadores_plots/
-# cd data/datoscontadores_csv/S02
-# for f in *.csv; do ../../../lstm_meter_data_consumption_forecast/lstm_meter_data_consumption_plotter.py -s "$f" -d ../S05/"${f%.csv}_S05.csv" -e ../Errors/"${f%.csv}_error.csv" -o ../../datoscontadores_plots/ ;done
+# ./arima_meter_data_consumption_predictor.py -f ../data/datoscontadores_csv/meter_data_ZIV0035301588.csv -n 200 -e ../data/datoscontadores_csv/error_files/meter_data_ZIV0035301588_error.csv
+
+
+# https://machinelearningmastery.com/how-to-develop-an-autoregression-forecast-model-for-household-electricity-consumption/
+# evaluate one or more weekly forecasts against expected values
+def evaluate_forecasts(actual, predicted):
+	scores = list()
+	# calculate an RMSE score for each day
+	for i in range(actual.shape[1]):
+		# calculate mse
+		mse = mean_squared_error(actual[:, i], predicted[:, i])
+		# calculate rmse
+		rmse = sqrt(mse)
+		# store
+		scores.append(rmse)
+	# calculate overall RMSE
+	s = 0
+	for row in range(actual.shape[0]):
+		for col in range(actual.shape[1]):
+			s += (actual[row, col] - predicted[row, col])**2
+	score = sqrt(s / (actual.shape[0] * actual.shape[1]))
+	return score, scores
 
 
 def normalize_numeric_column(field):
     # TODO check if the field exists
-    series_power = samples_S02_df[field].astype(np.float64)
+    series_power = samples02_df[field].astype(np.float64)
     values = series_power.values
     values = values.reshape(len(values),1)
     scaler = MinMaxScaler(feature_range = (0, 1))
@@ -45,47 +62,43 @@ def normalize_numeric_column(field):
 
 
 def main(argv):
-    training_samples_file_S02 = ''
-    training_samples_file_S05 = ''
-    error_file = ''
+    training_samples_file_s02_S02 = ''
+   # training_samples_file_s02_S05 = ''
 
     testing_samples_file = ''
     try:
-        opts, args = getopt.getopt(argv,"hs:d:e:o:",["sample-file-S02=","sample-file-S05=","error-file","output-folder"])
+        opts, args = getopt.getopt(argv,"hf:n:e:",["sample-file=","number-training-samples="])
     except getopt.GetoptError:
-        print('lstm_meter_data_consumption_predictor.py -s <sample file S02> -s <sample file S05> -e <error file>')
+        print('lstm_meter_data_consumption_predictor.py -f <sample file> -n <numebr-training samples>')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print('lstm_meter_data_consumption_predictor.py -s <sample file S02> -s <sample file S05> -e <error file>')
+            print('lstm_meter_data_consumption_predictor.py -f <sample file> -n <number-training samples>')
             sys.exit()
-        elif opt in ("-s", "--sample-file-S02"):
-            training_samples_file_S02 = arg
-        elif opt in ("-d", "--sample-file-S05"):
-            training_samples_file_S05 = arg
+        elif opt in ("-fS02", "--sample-file-S02"):
+            training_samples_file_s02 = arg
+        elif opt in ("-fS05", "--sample-file-S05"):
+            training_samples_file_s02 = arg
+        elif opt in ("-n", "--number-training-samples"):
+            testing_samples_file = arg
         elif opt in ("-e", "--error-file"):
             error_file = arg
-        elif opt in ("-o", "--output-folder"):
-            output_folder = arg    
 
 
-    return training_samples_file_S02, training_samples_file_S05, error_file, output_folder  
+    return training_samples_file_s02, testing_samples_file, error_file  
 
 if __name__ == "__main__":
-    sample_S02_file_path, sample_S05_file_path , error_file, output_folder = main(sys.argv[1:])
 
-    #opsd_daily = pd.read_csv('opsd_germany_daily.csv', index_col=0, parse_dates=True)
+    sample_file_path, number_training_samples, error_file = main(sys.argv[1:])
 
-    samples_S02_df= pd.read_csv(sample_S02_file_path)
-    samples_S05_df= pd.read_csv(sample_S05_file_path)
+    samples02_df= pd.read_csv(sample_file_path)
     error_df = pd.read_csv(error_file)
 
-    meter_id = re.compile('.*meter_data_(.*)\.csv').match(sample_S02_file_path).group(1)
+    meter_id = re.compile('.*meter_data_(.*)\.csv').match(sample_file_path).group(1)
     print('Processing data for meter ID: ' + meter_id)
 
     # print(sample_file['Fh'])
-    print(samples_S02_df.head())
-    print(samples_S05_df.head())
+    print(samples02_df.head())
 
 
     # # iterating the columns 
@@ -105,12 +118,9 @@ if __name__ == "__main__":
     # ###########################################################################
 
     # Order data by date
-    # TODO check if this is still needed
-    samples_S02_df['Fh'] = pd.to_datetime(samples_S02_df['Fh'])
-    samples_S02_df= samples_S02_df.sort_values(by=['Fh'])
 
-    samples_S05_df['Fh'] = pd.to_datetime(samples_S05_df['Fh'])
-    samples_S05_df= samples_S05_df.sort_values(by=['Fh'])
+    samples02_df['Fh'] = pd.to_datetime(samples02_df['Fh'])
+    samples02_df= samples02_df.sort_values(by=['Fh'])
 
     error_df['t'] = pd.to_datetime(error_df['t'])
     error_df= error_df.sort_values(by=['t'])
@@ -123,8 +133,8 @@ if __name__ == "__main__":
     #   - statistical test
 
     # check data types
-    print(samples_S02_df.dtypes)
-    print(samples_S05_df.dtypes)
+    print(samples02_df.dtypes)
+
     print(error_df.dtypes)
 
     # counts, bins = np.histogram(samples02_df['AI'])
@@ -138,17 +148,7 @@ if __name__ == "__main__":
     # ANTON: check the histogram for the same time for every day, I think this should be a Gaussian distribution
 
     # set date as index
-    # TODO check if this is still needed
-    #samples_S02_df = samples_S02_df.set_index('Fh')
-    
-    # we added this field to create the boxplot
-    samples_S05_df['Month'] = pd.to_datetime(samples_S05_df['Fh']).dt.to_period('M')
-
-    samples_S05_df = samples_S05_df.set_index('Fh')
-    error_df = error_df.set_index('t')
-
-    print(samples_S05_df)
-
+    samples02_df = samples02_df.set_index('Fh')
     #samples02_df.timedelta_range(0, periods=9, freq="W")
 
 
@@ -174,7 +174,6 @@ if __name__ == "__main__":
     # 
 
     print(error_df.dtypes)
-    print(samples_S05_df.dtypes)
 
 
     # sns.set(rc={'figure.figsize':(11, 4)})
@@ -185,74 +184,13 @@ if __name__ == "__main__":
     # samples02_df['R1'].set_ylabel('Hourly reactive power quadrant I (VArh)')
     # samples02_df['R4'].set_ylabel('Hourly reactive power quadrant IV (VArh)')
 
-    # example using loc
-    ax =  samples_S05_df.loc['2018-02':'2018-03','AI-Total'].plot()
-    #ax =  samples_S05_df.diff(periods=1,axis=0).loc['2018-02':'2018-03','AI-Total'].plot()
-    ax =  samples_S05_df.diff(periods=1,axis=0).loc['2018-02','AI-Total'].plot()
-
-    # seasonality 
-    # ts = samples_S05_df
-
-    # print(ts.info)
-    # #create a column containing the month
-    # print(ts['Fh'])
-    # ts['Month'] = pd.to_datetime(ts['Fh']).dt.to_period('M')
-
-
-    #sns.boxplot(data=samples_S05_df, x='Month', y='kona', ax=ax)
-    ax = sns.boxplot(y=samples_S05_df.diff(periods=1,axis=0).loc['2018-01':'2018-12','AI-Total'], x=samples_S05_df.loc['2018-01':'2018-12','Month'])
-    ax.set(ylim=(0, 30))
-
-    # example using locator grid
-    # ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=mdates.MONDAY))
-    # ax.xaxis.set_major_locator(mdates.HourLocator(byhour=None, interval=12))
-    # ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'));   
 
     cols_plot = ['AI', 'R1', 'R4']
     #axes = samples02_df[cols_plot].plot(marker='.', alpha=0.5, linestyle='None', figsize=(11, 9), subplots=True)
-    axes_S02 = samples_S02_df[cols_plot].plot(linewidth=0.3,alpha=0.5,figsize=(11, 9), subplots=True, title="S02 Meter ID: "+meter_id)
-    axes_S02[0].set_ylabel('Hourly consumption (Wh)')
-    axes_S02[1].set_ylabel('Hourly reactive QI (VArh)')
-    axes_S02[2].set_ylabel('Hourly reactive QIV (VArh)')
-    plt.savefig(output_folder + meter_id + 'S02.png')
-
-    cols_S05_plot_total = ['AI-Total', 'R1-Total', 'R4-Total']#,'AI-1','R1-1','R4-1','AI-2','R1-2','R4-2']
-    axes_S05_Total = samples_S05_df[cols_S05_plot_total].plot(marker='.', alpha=0.1, linestyle='None',figsize=(11, 15), subplots=True, title="S05 Total Meter ID: "+meter_id)
-    axes_S05_Total[0].set_ylabel('Daily consumption (KWh)')
-    axes_S05_Total[1].set_ylabel('Daily reactive QI (VArh)')
-    axes_S05_Total[2].set_ylabel('Daily reactive QIV (VArh)')
-    plt.savefig(output_folder + meter_id + 'S05_0_total.png')
-
-    axes_S05_Total = samples_S05_df.diff(periods=1,axis=0)[cols_S05_plot_total].plot(linewidth=0.4, alpha=0.5,figsize=(11, 15), subplots=True, title="S05 consumption per day Meter ID: "+meter_id)
-    axes_S05_Total[0].set_ylabel('Daily consumption (KWh)')
-    axes_S05_Total[1].set_ylabel('Daily reactive QI (VArh)')
-    axes_S05_Total[2].set_ylabel('Daily reactive QIV (VArh)')
-    plt.savefig(output_folder + meter_id + 'S05_0_day.png')
-
-    plt.show()
-
-    print("S05 Delta Dataframe")
-    print(samples_S05_df.diff(periods=1,axis=0).head())
-
-    # GARDAR ISTO COMO CSV PARA REVISAR OS DATOS!!!!!!
-
-
-
-    cols_S05_plot_1 = ['AI-1','R1-1','R4-1']
-    axes_S05_1 = samples_S05_df[cols_S05_plot_1].plot(marker='.', alpha=0.1, linestyle='None',figsize=(11, 15), subplots=True, title="S05 Tarifa 1 Meter ID: "+meter_id)
-    axes_S05_1[0].set_ylabel('Daily consumption (KWh)')
-    axes_S05_1[1].set_ylabel('Daily reactive QI (VArh)')
-    axes_S05_1[2].set_ylabel('Daily reactive QIV (VArh)')
-    plt.savefig(output_folder + meter_id + 'S05_1.png')
-
-
-    cols_S05_plot_2 = ['AI-2','R1-2','R4-2']
-    axes_S05_2 = samples_S05_df[cols_S05_plot_2].plot(marker='.', alpha=0.1, linestyle='None',figsize=(11, 15), subplots=True, title="S05 Tarifa 2 Meter ID: "+meter_id)
-    axes_S05_2[0].set_ylabel('Daily night consumption (KWh)')
-    axes_S05_2[1].set_ylabel('Daily night reactive QI (VArh)')
-    axes_S05_2[2].set_ylabel('Daily night reactive QIV (VArh)')
-    plt.savefig(output_folder + meter_id + 'S05_2.png')
-
+    axes = samples02_df[cols_plot].plot(linewidth=0.3,alpha=0.5,figsize=(11, 9), subplots=True, title="Meter ID: "+meter_id)
+    axes[0].set_ylabel('Hourly consumption (Wh)')
+    axes[1].set_ylabel('Hourly reactive power QI (VArh)')
+    axes[2].set_ylabel('Hourly reactive power QIV (VArh)')
 
     #cols_plot_error = ['ErrCode', 'type']
     #axes_error = error_df[cols_plot_error].plot(marker='.', alpha=0.5, linestyle='None', figsize=(11, 9), title="Errors meter ID: "+meter_id)
@@ -260,7 +198,7 @@ if __name__ == "__main__":
 
     # for ax in axes:
     #     ax.set_ylabel('Hourly Totals (Wh)')
-    #plt.show()
+    plt.show()
     #plt.savefig(meter_id+'.png')
 
 
@@ -270,9 +208,9 @@ if __name__ == "__main__":
 
     # Data normalization
 
-    samples_S02_df['AI'] = normalize_numeric_column('AI')
-    samples_S02_df['R1'] = normalize_numeric_column('R1')
-    samples_S02_df['R4'] = normalize_numeric_column('R4')
+    samples02_df['AI'] = normalize_numeric_column('AI')
+    samples02_df['R1'] = normalize_numeric_column('R1')
+    samples02_df['R4'] = normalize_numeric_column('R4')
 
 
     # We are going to predict first power consumption
@@ -329,6 +267,19 @@ if __name__ == "__main__":
 
     # # print("training scaled")
     # # print(training_scaled)
+
+
+# The data in a given dataset will be divided into standard weeks. These are weeks that begin on a Sunday and end on a Saturday.
+# This is a realistic and useful way for using the chosen framing of the model, where the power consumption for the week ahead can be predicted.
+#  It is also helpful with modeling, where models can be used to predict a specific day (e.g. Wednesday) or the entire sequence.
+
+# ARIMA yields better results in forecasting short term, whereas LSTM yields better results for long term modeling.
+# can they combined beat HTM? How much compotational force is needed to use each algorithm? Compare ARIMA and LSTM and HTM for short range
+# compare LSTM and HTM for long range prediction
+
+# https://towardsdatascience.com/arima-sarima-vs-lstm-with-ensemble-learning-insights-for-time-series-data-509a5d87f20a
+# The time series defined in AR, MA, and ARMA models are stationary processes, which means that the mean of the series of 
+#  any of these models and the covariance among its observations do not change with time.
 
 
 
