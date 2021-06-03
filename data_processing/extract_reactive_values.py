@@ -37,9 +37,12 @@ for index, filename in enumerate(file_list):
         df_hourly_deltas = df_hourly_deltas[['timestamp', 'R1', 'R2', 'R3', 'R4']]
         df_daily_deltas = df_daily_deltas[['timestamp', 'R1a', 'R2a', 'R3a', 'R4a']]
 
+        # For the daily deltas, get just the first row for each date (Ctr = 1, Pt = 0)
+        df_daily_deltas = df_daily_deltas.groupby('timestamp').first()
+
         # Write the data into two CSV files
         df_hourly_deltas.to_csv(f"{csv_output_path}/meter_data_{meter_id}_S02.csv", index=False)
-        df_hourly_deltas.to_csv(f"{csv_output_path}/meter_data_{meter_id}_S05.csv", index=False)
+        df_daily_deltas.to_csv(f"{csv_output_path}/meter_data_{meter_id}_S05.csv")
 
     except Exception:
         print(f"Something went wrong with file {filename}")
