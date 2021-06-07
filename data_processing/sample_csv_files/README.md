@@ -7,3 +7,4 @@ Some sample CSV files generated with the data preprocessing scripts:
     - `meter_data_CIR0141414821_S04.csv`: S04 records for a random meter.
     - `meter_data_CIR0141414821_S05.csv`: S05 records for a random meter.
 - `non_monotonic_values.csv`: S05 deltas lower than 0, together with their timestamp and meter ID.
+- `invalid_data.csv`: CSV with all the S02 records which have its BC greater or equal than 0x80
