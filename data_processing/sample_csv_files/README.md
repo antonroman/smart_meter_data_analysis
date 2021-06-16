@@ -8,3 +8,5 @@ Some sample CSV files generated with the data preprocessing scripts:
     - `meter_data_CIR0141414821_S05.csv`: S05 records for a random meter.
 - `non_monotonic_values.csv`: S05 deltas lower than 0, together with their timestamp and meter ID.
 - `invalid_data.csv`: CSV with all the S02 records which have its BC greater or equal than 0x80
+- `valid_meters_2020.csv`: CSV with all the S05 files which have records from 1st January 2020 to 31st December 2020
+- `time_ranges.csv`: CSV with the start date and the number of days until the end of the records for each meter.
