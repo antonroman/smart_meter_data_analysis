@@ -6,6 +6,8 @@ Some sample CSV files generated with the data preprocessing scripts:
     - `meter_data_CIR0141414821_S02.csv`: S02 records for a random meter.
     - `meter_data_CIR0141414821_S04.csv`: S04 records for a random meter.
     - `meter_data_CIR0141414821_S05.csv`: S05 records for a random meter.
+- Aggregated values, generated with the `aggregate_reactive_values.py`:
+    - `agg_values_S05_30.csv`: Aggregation of the S05 values for the 30% of the meters with records from 1st Jan 2020 to 31st Dec 2020.
 - `non_monotonic_values.csv`: S05 deltas lower than 0, together with their timestamp and meter ID.
 - `invalid_data.csv`: CSV with all the S02 records which have its BC greater or equal than 0x80
 - `valid_meters_2020.csv`: CSV with all the S05 files which have records from 1st January 2020 to 31st December 2020
