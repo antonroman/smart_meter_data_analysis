@@ -16,7 +16,7 @@ aggregated_files_output_folder = 'aggregated_reactive'
 from_day = '2020-01-01'
 to_day = '2020-12-31'
 
-def aggregate_files(file_type):
+def aggregate_files(file_type, csv_file_columns):
     with open(valid_files_csv_filename, 'r') as f:
         # Read the file list form the valid meters list
         file_list = list(map(lambda x: x.strip(), f.readlines()))
@@ -35,26 +35,35 @@ def aggregate_files(file_type):
         # Name of the output aggregated file
         agg_filename = f'agg_values_{file_type}_{str(int(100 * agg_level))}.csv'
 
+        # The DataFrame where the aggregated values will be stored
+        df = pd.DataFrame({}, columns=csv_file_columns)
+
         # Read each CSV file for the current aggregation level and add its contents to the output aggregation CSV file
         for index, csv_file in enumerate(agg_files_list):
             print("Progress: %.2f%%" % (100 * (index / len(agg_files_list))), end="\r", flush=True)
-
+            
             # Read the CSV file as a DataFrame and parse the timestamp
-            df = pd.read_csv(f'{reactive_values_files_folder}/{csv_file}', index_col='timestamp')
-            df.index = pd.to_datetime(df.index)
-            df = df.sort_values(by='timestamp')
+            df_new = pd.read_csv(f'{reactive_values_files_folder}/{csv_file}', index_col='timestamp')
+            df_new.index = pd.to_datetime(df_new.index)
+            df_new = df_new.sort_values(by='timestamp')          
 
             # Get the data for the desired time window
-            df = df.loc[from_day:to_day] 
+            df_new = df_new.loc[from_day:to_day]       
 
-            print_header = not(bool(index))  # the CSV header should be printed only the first time
-            df.to_csv(f'{aggregated_files_output_folder}/{agg_filename}', header=print_header, index=True, mode='a')
+            # Join the new DataFrame with the aggregation of the previous CSV
+            df = pd.concat([df, df_new])  # this is a more efficient and RAM friendly way of calculating the sum, rather than loading all the CSV files into a single DataFrame
+
+            # Aggregate the data by time
+            df = df.groupby('timestamp').sum()
+
+        # Write the aggregated values to the CSV file
+        df.to_csv(f'{aggregated_files_output_folder}/{agg_filename}', index=True, mode='w')
 
 
 os.makedirs(aggregated_files_output_folder, exist_ok=True)
 
 print("Aggregating S02 data...\n")
-aggregate_files('S02')
+aggregate_files('S02', ["timestamp", "R1", "R2", "R3", "R4"])
 
 print("\n\nAggregating S05 data...\n")
-aggregate_files('S05')
+aggregate_files('S05', ["timestamp", "R1a", "R2a", "R3a", "R4a"])
