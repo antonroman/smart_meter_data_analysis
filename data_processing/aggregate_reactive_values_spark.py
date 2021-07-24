@@ -6,18 +6,22 @@
 """
 import pandas as pd
 import os
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, to_timestamp, mean, stddev
 
 valid_files_csv_filename = 'valid_meters_2020.csv'
 meters_with_outliers_filename = 'outliers_S02.csv'
 reactive_values_files_folder = 'reactive_values'
-aggregated_files_output_folder = 'aggregated_reactive'
+aggregated_files_output_folder = 'aggregated_reactive_spark'
 
 # Time window
 from_day = '2020-01-01'
 to_day = '2020-12-31'
 
+spark = SparkSession.builder.appName("Aggregate reactive values").getOrCreate()
 
-def aggregate_files(file_type, csv_file_columns):
+
+def aggregate_files(file_type):
     with open(valid_files_csv_filename, 'r') as f:
         # Read the file list form the valid meters list
         file_list = list(map(lambda x: x.strip(), f.readlines()))
@@ -34,43 +38,40 @@ def aggregate_files(file_type, csv_file_columns):
         print("Aggregating %i%% of the files..." % (100 * agg_level))
 
         # For each aggregation level, select the corresponding files
-        agg_files_list = file_list[0:int(agg_level * len(file_list) - 1)]
+        agg_files_list = list(map(lambda x: f'{reactive_values_files_folder}/{x}',
+                                  file_list[0:int(agg_level * len(file_list) - 1)]))
         print(len(agg_files_list))
 
         # Name of the output aggregated file
         agg_filename = f'agg_values_{file_type}_{str(int(100 * agg_level))}.csv'
 
-        # The DataFrame where the aggregated values will be stored
-        df = pd.DataFrame({}, columns=csv_file_columns)
+        # Read the aggregated CSVs in a DataFrame
+        df = spark.read.csv(agg_files_list, header=True, inferSchema=True)
 
-        # Read each CSV file for the current aggregation level and add its contents to the output aggregation CSV file
-        for index, csv_file in enumerate(agg_files_list):
-            print("Progress: %.2f%%" % (100 * (index / len(agg_files_list))), end="\r", flush=True)
+        # Parse the timestamp and get only the data from 2020
+        df = df.withColumn("timestamp_norm", to_timestamp(col("timestamp"))).drop("timestamp") \
+            .withColumnRenamed("timestamp_norm", "timestamp")
+        df = df.filter((col("timestamp") >= from_day) & (col("timestamp") <= to_day))
 
-            # Read the CSV file as a DataFrame and parse the timestamp
-            df_new = pd.read_csv(f'{reactive_values_files_folder}/{csv_file}', index_col='timestamp')
-            df_new.index = pd.to_datetime(df_new.index)
-            df_new = df_new.sort_values(by='timestamp')
+        # Aggregate the data by time
+        df = df.groupBy('timestamp').sum().orderBy('timestamp')
+        df = df.withColumnRenamed("sum(R1)", "R1")\
+            .withColumnRenamed("sum(R2)", "R2")\
+            .withColumnRenamed("sum(R3)", "R3")\
+            .withColumnRenamed("sum(R4)", "R4") \
+            .withColumnRenamed("sum(R1a)", "R1a") \
+            .withColumnRenamed("sum(R2a)", "R2a") \
+            .withColumnRenamed("sum(R3a)", "R3a") \
+            .withColumnRenamed("sum(R4a)", "R4a")
 
-            # Get the data for the desired time window
-            df_new = df_new.loc[from_day:to_day]
-
-            # Join the new DataFrame with the aggregation of the previous CSV
-            df = pd.concat([df,
-                            df_new])  # this is a more efficient and RAM friendly way of calculating the sum, rather
-            # than loading all the CSV files into a single DataFrame
-
-            # Aggregate the data by time
-            df = df.groupby('timestamp').sum()
-
-        # Write the aggregated values to the CSV file
-        df.to_csv(f'{aggregated_files_output_folder}/{agg_filename}', index=True, mode='w')
+        # Save the data
+        df.write.csv(f'{aggregated_files_output_folder}/{agg_filename}', mode='overwrite')
 
 
 os.makedirs(aggregated_files_output_folder, exist_ok=True)
 
 print("Aggregating S02 data...\n")
-aggregate_files('S02', ["timestamp", "R1", "R2", "R3", "R4"])
+aggregate_files('S02')
 
 print("\n\nAggregating S05 data...\n")
-aggregate_files('S05', ["timestamp", "R1a", "R2a", "R3a", "R4a"])
+aggregate_files('S05')
