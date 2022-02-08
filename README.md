@@ -20,7 +20,7 @@ The input variables of the script [extract_S0_values.py](extract_S0_values.py) u
 - the folder where the processed files will be stored. There will be three files per meter with this name pattern: 'meter_data_<meter ID>' 
 
 ### 1.2 Optimal forecasting range discovery
-In order to achieve have a wider sample of meters, we tried to find the longest period of time including as many meter samples as possible. In other words, as not all the meters include the very same time range. In order to try to detect yearly patterns we needed to find a range longer than 1-year. Ideally the time range should be longer than 2-years so that the algorithm can take advantage of the what it learnt from the previous year. However in the initial sample we had a maximum range of XXX days. In order to find the optimal time range an algorithm was developed. It tries to find the time range where we have more meter providing data simultaneously. 
+In order to achieve have a wider sample of meters, we tried to find the longest period of time including as many meter samples as possible. In other words, as not all the meters include the very same time range. In order to try to detect yearly patterns we needed to find a range longer than 1-year. Ideally the time range should be longer than 2-years so that the algorithm can take advantage of what it learnt from the previous year. However, we may have different range of days for each meter, so in order to do aggregated estimations we should consider the period for which we have the maximum number of samples. In order to find the optimal time range an algorithm was developed. It tries to find the time range where we have more meter providing data simultaneously. 
 
 The algorithm is implemented and explained in details in [Max_overlapping_timeseries.ipynb](Max_overlapping_timeseries.ipynb). This scrip can be used for any set of data series where it is needed to find the maximum number of overlapping series. 
 
@@ -70,7 +70,7 @@ Folder with S02, S04 and S05 files.
 ##### Output
 (*na_values.txt*) with the rows with N/A values.
 #### 1.3.2 Detect S05 values are monotonic
-S05 show the total active power consumption registered by the meter. Since these meters are for consumers we should not have any negative increment in theses values. The script  [check_monotonic_s05.py](check_monotonic_s05.py) analyzes the S05 files from all the meters and generates an output file including all the timestamps of negative increments along with the meter ID.
+S05 show the total active power consumption registered by the meter. Since these meters are for consumers we should not have any negative increment in these values. The script  [check_monotonic_s05.py](check_monotonic_s05.py) analyzes the S05 files from all the meters and generates an output file including all the timestamps of negative increments along with the meter ID.
 
 ##### Input 
 Folder with S05 files.
@@ -85,7 +85,7 @@ Folder with S02 files.
 (*called invalid_data.csv*) including all the invalid records along wit the meter ID.
 
 ### 1.4 Outlier detection
-In order to evaluate and avoid the effect of outlier values in the prediction there were used mechanism to detect outliers values. We created two versions of the outlier detection scripts: one just using Python libraries and another using the pyspark python library to take advantage of *Spark* in order to improve the performance of the outlier detection.
+In order to evaluate and avoid the effect of outlier values in the prediction there were used mechanisms to detect outliers values. We created two versions of the outlier detection scripts: one just using Python libraries and another using the pyspark Python library to take advantage of *Spark* in order to improve the performance of the outlier detection.
 
 The scripts remove the values which are above 4 times the standard deviation. This threshold can be easily changed in the script. The output of the script is: 
 #### Input
