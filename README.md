@@ -22,7 +22,7 @@ The input variables of the script [extract_S0_values.py](extract_S0_values.py) u
 ### 1.2 Optimal forecasting range discovery
 In order to achieve have a wider sample of meters, we tried to find the longest period of time including as many meter samples as possible. In other words, as not all the meters include the very same time range. In order to try to detect yearly patterns we needed to find a range longer than 1-year. Ideally the time range should be longer than 2-years so that the algorithm can take advantage of what it learnt from the previous year. However, we may have different range of days for each meter, so in order to do aggregated estimations we should consider the period for which we have the maximum number of samples. In order to find the optimal time range an algorithm was developed. It tries to find the time range where we have more meter providing data simultaneously. 
 
-The algorithm is implemented and explained in details in [Max_overlapping_timeseries.ipynb](Max_overlapping_timeseries.ipynb). This scrip can be used for any set of data series where it is needed to find the maximum number of overlapping series. 
+The algorithm is implemented and explained in details in [Max_overlapping_timeseries.ipynb]([Max_overlapping_timeseries.ipynb](https://colab.research.google.com/drive/1NN57jbL9MrJkqNKgDjVBfLm9RMyWNHvy?usp=sharing)). This scrip can be used for any set of data series where it is needed to find the maximum number of overlapping series. 
 
 ##### Input 
 
