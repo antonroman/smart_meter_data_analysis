@@ -78,30 +78,33 @@ Folder with S05 files.
 (*non_monotonic_values.txt*) with the meters which show non-monotonic S05 values.
 
 #### 1.3.3 Detect invalid data
-The PRIME protocol requires the addition of a field BC in S0X fields. This is the result of a binary comprobation of the results. If the value is higher than x80 (128 in decimal) the result must considered as no valid. The script [detect_bc_invalid.py](detect_bc_invalid.py) generates an output file which includes all the invalid records along wit the meter ID.
+The PRIME protocol requires the addition of a field BC in S0X fields. This is the result of a binary comprobation of the results. If the value is higher than x80 (128 in decimal) the result must be considered as no valid. The script [detect_bc_invalid.py](detect_bc_invalid.py) generates an output file which includes all the invalid records along wit the meter ID.
 ##### Input 
 Folder with S02 files.
 ##### Output
 (*called invalid_data.csv*) including all the invalid records along wit the meter ID.
 
 ### 1.4 Outlier detection
-In order to evaluate and avoid the effect of outlier values in the prediction there were used mechanisms to detect outliers values. We created two versions of the outlier detection scripts: one just using Python libraries and another using the pyspark Python library to take advantage of *Spark* in order to improve the performance of the outlier detection.
+In order to evaluate and avoid the effect of outlier values in the prediction there were used mechanisms to detect outliers values. We created two versions of the outlier detection scripts: one just using Python libraries and another using the pyspark Python library to take advantage of *Spark* in order to improve the performance of the outlier detection. The name of the Spark version of the script is [search_outliers_spark.py](search_outliers_spark.py).
 
-The scripts remove the values which are above 4 times the standard deviation. This threshold can be easily changed in the script. The output of the script is: 
+The scripts remove the values which are above 4 times the standard deviation. This threshold can be easily changed in the script. 
 #### Input
+A CSV file with the ID of the meters with valid data for a given period. In the repository, we hardcoded a CSV file with the IDs of complete data for the year 2020.
 
 #### Output
+NUmber of outliers for S02 files and CSV file with the number of outliers per meter.
 
 
 ### 1.5 Data aggregation
+It aggregates S02 and S05 CSV files from 10% to 100% in 10% steps, and, therefore, generating 10 files. It needs a CSV file with the data from all the meters which have data for all 2020 (see get_overlapping_dates_meters.py).
+It is used to check how impacts the level of aggregation in the accuracy of ML forecasting algorithms.
+
 #### Input 
+CSV file with the data from all the meters which have data for a given period of time (see get_overlapping_dates_meters.py).
+Optionally, a CSV file with the detected outliers can be used, so the outliers will be removed from the aggregations.
+
 #### Output
-
-
-
-
-
-O BE COMPLETED
+Set of 10 files with aggregated values for both S02 and S05.
 
 ## ARIMA analysis
 
