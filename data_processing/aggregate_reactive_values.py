@@ -24,10 +24,10 @@ def aggregate_files(file_type, csv_file_columns):
         file_list = list(filter(lambda x: file_type in x, file_list))
 
     # Remove the outliers
-    if file_type == 'S02':
-        outliers_df = pd.read_csv(meters_with_outliers_filename, low_memory=False, skiprows=1)
-        meters_with_outliers = list(outliers_df['meter_id'].value_counts().index)
-        file_list = list(filter(lambda x: x.split('_')[-2] not in meters_with_outliers, file_list))
+#    if file_type == 'S02':
+#        outliers_df = pd.read_csv(meters_with_outliers_filename, low_memory=False, skiprows=1)
+#        meters_with_outliers = list(outliers_df['meter_id'].value_counts().index)
+#        file_list = list(filter(lambda x: x.split('_')[-2] not in meters_with_outliers, file_list))
 
     aggregation_levels = [x / 10 for x in range(1, 11)]
     for agg_level in aggregation_levels:
