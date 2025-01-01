@@ -16,7 +16,7 @@ def convert_csv(input_file, output_file):
         # Extract the desired columns and format them
         df['timestamp'] = df['timestamp'].astype(str)
         df['timestamp'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d %H:%M:%S%z')  
-        df['timestamp'] = pd.to_datetime(df['timestamp']).dt.strftime('%y/%m/%d %H:%M')
+        df['timestamp'] = pd.to_datetime(df['timestamp']).dt.strftime('%m/%m/%y %H:%M')
         df = df[['timestamp', 'value1']]
 
         # Write the converted data to a new CSV file
